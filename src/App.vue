@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
     <div
-      v-if="isLoading"
+      v-if="isDataLoading"
       class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
     >
       <svg
@@ -38,6 +38,7 @@
               <input
                 v-model="ticker"
                 @keydown.enter="add"
+                @input="validateTicker"
                 id="wallet"
                 class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
                 name="wallet"
@@ -46,30 +47,20 @@
               />
             </div>
             <div
+              v-if="isTickerFound"
               class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
             >
               <span
+                v-for="(item, idx) in limitedAvailableStickers"
+                :key="idx"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                BTC
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                DOGE
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                BCH
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                CHD
+                {{ item.Symbol }}
               </span>
             </div>
-            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div v-if="isTickerAlreadyAdded" class="text-sm text-red-600">
+              Такой тикер уже добавлен
+            </div>
           </div>
         </div>
         <button
@@ -187,13 +178,20 @@ export default {
   name: "App",
   data() {
     return {
-      isLoading: true,
+      isDataLoading: true,
+      isTickerFound: false,
+      isTickerAlreadyAdded: false,
       availableTickers: [],
       ticker: "",
       tickers: [],
       sel: null,
       graph: [],
     };
+  },
+  computed: {
+    limitedAvailableStickers() {
+      return 0;
+    },
   },
   methods: {
     add() {
@@ -215,6 +213,10 @@ export default {
         }
       }, 3000);
       this.ticker = "";
+    },
+    validateTicker() {
+      this.isTickerAlreadyAdded = false;
+      console.log(`что-то вводим`);
     },
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
@@ -238,7 +240,7 @@ export default {
       );
       let loadingTickers = await data.json();
       this.availableTickers = loadingTickers.Data;
-      this.isLoading = false;
+      this.isDataLoading = false;
     }, 0);
   },
 };
