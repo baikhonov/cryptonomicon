@@ -151,7 +151,10 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectedTicker.name }} - USD
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64"
+          ref="graph"
+        >
           <div
             v-for="(bar, idx) in normalizedGraph"
             :key="idx"
@@ -192,16 +195,17 @@
 </template>
 
 <script>
+// H - Home Work
 // [х] 6. Наличие в состоянии зависимых данных | Критичность: 5+
-// [] 4. Запросы напрямую внутри компонента | Критичность: 5
-// [] 2. при удалении остаётся подписка на загрузку тикера | Критичность: 5
-// [] 5. Обработка ошибок API  | Критичность: 5
-// [] 3. Количество запросов | Критичность: 4
+// [x] 4. Запросы напрямую внутри компонента | Критичность: 5
+// [x] 2. при удалении остаётся подписка на загрузку тикера | Критичность: 5
+// [Р] 5. Обработка ошибок API  | Критичность: 5
+// [х] 3. Количество запросов | Критичность: 4
 // [x] 8. При удалении тикера не изменяется localStorage | Критичность: 4
 // [x] 1. одинаковый код в watch | Критичность: 3
-// [] 9. localStorage и анонимные вкладки | Критичность: 3
-// [] 7. График ужасно выглядит если будет много цен  | Критичность: 2
-// [] 10. Магические строки и числа (URL, 5000 мс задержки, ключ localStorage, количество тикеров на страницу, ) | Критичность: 1
+// [H] 9. localStorage и анонимные вкладки | Критичность: 3
+// [x] 7. График ужасно выглядит если будет много цен  | Критичность: 2
+// [WIP] 10. Магические строки и числа (URL, 5000 мс задержки, ключ localStorage, количество тикеров на страницу, ) | Критичность: 1
 
 // Параллельно
 //
@@ -220,10 +224,11 @@ export default {
       selectedTicker: null,
 
       graph: [],
+      maxGraphElements: 1,
 
       page: 1,
 
-      isDataLoading: true,
+      isDataLoading: false,
       isTickerFound: false,
       isTickerAlreadyAdded: false,
       availableTickers: [],
@@ -251,8 +256,12 @@ export default {
         );
       });
     }
-
-    setInterval(this.updateTickers, 5000);
+  },
+  mounted() {
+    window.addEventListener("resize", this.calculateMaxGraphElements);
+  },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.calculateMaxGraphElements);
   },
   computed: {
     startIndex() {
@@ -298,12 +307,22 @@ export default {
     },
   },
   methods: {
+    calculateMaxGraphElements() {
+      if (!this.$refs.graph) {
+        return;
+      }
+      this.maxGraphElements = this.$refs.graph.clientWidth / 38;
+    },
     updateTicker(tickerName, price) {
+      this.calculateMaxGraphElements();
       this.tickers
         .filter((t) => t.name === tickerName)
         .forEach((t) => {
           if (t === this.selectedTicker) {
             this.graph.push(price);
+            if (this.graph.length > this.maxGraphElements) {
+              this.graph = this.graph.slice(-this.maxGraphElements);
+            }
           }
           t.price = price;
         });
@@ -346,16 +365,7 @@ export default {
       unsubscribeFromTicker(tickerToRemove.name);
     },
   },
-  mounted() {
-    setTimeout(async () => {
-      // const data = await fetch(
-      //   `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
-      // );
-      // let loadingTickers = await data.json();
-      // this.availableTickers = loadingTickers.Data;
-      this.isDataLoading = false;
-    }, 0);
-  },
+
   watch: {
     selectedTicker() {
       this.graph = [];
