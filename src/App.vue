@@ -28,62 +28,7 @@
 
     <div class="container">
       <div class="w-full my-4"></div>
-      <section>
-        <div class="flex">
-          <div class="max-w-xs">
-            <label class="block text-sm font-medium text-gray-700" for="wallet"
-              >Тикер</label
-            >
-            <div class="mt-1 relative rounded-md shadow-md">
-              <input
-                v-model="ticker"
-                @keydown.enter="add"
-                @input="validateTicker"
-                id="wallet"
-                class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
-                name="wallet"
-                placeholder="Например DOGE"
-                type="text"
-              />
-            </div>
-            <div
-              v-if="isTickerFound"
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-            >
-              <span
-                v-for="(item, idx) in limitedAvailableStickers"
-                :key="idx"
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                {{ item.Symbol }}
-              </span>
-            </div>
-            <div v-if="isTickerAlreadyAdded" class="text-sm text-red-600">
-              Такой тикер уже добавлен
-            </div>
-          </div>
-        </div>
-        <button
-          @click="add"
-          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-          type="button"
-        >
-          <!-- Heroicon name: solid/mail -->
-          <svg
-            class="-ml-0.5 mr-2 h-6 w-6"
-            fill="#ffffff"
-            height="30"
-            viewBox="0 0 24 24"
-            width="30"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-            ></path>
-          </svg>
-          Добавить
-        </button>
-      </section>
+      <add-ticker @add-ticker="add" :disabled="tooManyTickersAdded" />
 
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
@@ -212,12 +157,15 @@
 // [х] График сломан если везде одинаковые значения
 // [х] При удалении тикера остаётся выбор и вывод графика
 import { subscribeToTicker, unsubscribeFromTicker } from "@/api";
+import AddTicker from "@/components/AddTicker";
 
 export default {
   name: "App",
+  components: {
+    AddTicker,
+  },
   data() {
     return {
-      ticker: "",
       filter: "",
 
       tickers: [],
@@ -229,9 +177,6 @@ export default {
       page: 1,
 
       isDataLoading: false,
-      isTickerFound: false,
-      isTickerAlreadyAdded: false,
-      availableTickers: [],
     };
   },
   created() {
@@ -264,6 +209,9 @@ export default {
     window.removeEventListener("resize", this.calculateMaxGraphElements);
   },
   computed: {
+    tooManyTickersAdded() {
+      return this.tickers.length > 4;
+    },
     startIndex() {
       return (this.page - 1) * 6;
     },
@@ -314,7 +262,6 @@ export default {
       this.maxGraphElements = this.$refs.graph.clientWidth / 38;
     },
     updateTicker(tickerName, price) {
-      this.calculateMaxGraphElements();
       this.tickers
         .filter((t) => t.name === tickerName)
         .forEach((t) => {
@@ -334,14 +281,13 @@ export default {
       return price > 1 ? price.toFixed(2) : price.toPrecision(2);
     },
 
-    add() {
+    add(ticker) {
       const currentTicker = {
-        name: this.ticker,
+        name: ticker,
         price: "-",
       };
 
       this.tickers = [...this.tickers, currentTicker];
-      this.ticker = "";
       this.filter = "";
       subscribeToTicker(currentTicker.name, (newPrice) =>
         this.updateTicker(currentTicker.name, newPrice)
@@ -350,10 +296,6 @@ export default {
 
     select(ticker) {
       this.selectedTicker = ticker;
-    },
-
-    validateTicker() {
-      this.isTickerAlreadyAdded = false;
     },
 
     handleDelete(tickerToRemove) {
@@ -367,8 +309,9 @@ export default {
   },
 
   watch: {
-    selectedTicker() {
+    async selectedTicker() {
       this.graph = [];
+      this.$nextTick().then(this.calculateMaxGraphElements);
     },
     tickers() {
       localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
